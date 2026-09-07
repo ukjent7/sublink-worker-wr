@@ -231,19 +231,52 @@ export function createTlsConfig(params) {
 				short_id: params.sid,
 			};
 		}
+		// uTLS fingerprint is accepted by sing-box and Clash alike.
+		if (params.fp && !tls.utls) {
+			tls.utls = {
+				enabled: true,
+				fingerprint: params.fp,
+			};
+		}
+		// ALPN only takes effect on an enabled TLS session.
+		const alpn = parseArray(params.alpn);
+		if (alpn && alpn.length > 0) {
+			tls.alpn = alpn;
+		}
 	}
 	return tls;
 }
 
 export function createTransportConfig(params) {
-	return {
-		type: params.type,
+	const type = params.type;
+	// sing-box rejects unknown transport types, fall back to bare TCP.
+	if (type !== 'http' && type !== 'ws' && type !== 'quic' && type !== 'grpc' && type !== 'httpupgrade') {
+		return undefined;
+	}
+	// V2RayQUICOptions is an empty struct, extra fields would fail validation.
+	if (type === 'quic') {
+		return { type };
+	}
+	const transport = {
+		type,
 		path: params.path ?? undefined,
 		...(params.host && { 'headers': { 'host': params.host } }),
-		...(params.type === 'grpc' && {
+		...(type === 'grpc' && {
 			service_name: params.serviceName ?? undefined,
 		})
 	};
+	if (type === 'httpupgrade' && params.host) {
+		transport.host = params.host;
+	}
+	if (type === 'ws') {
+		// Early-data length arrives as `ed`/`edb` query params.
+		const rawEarlyData = params.ed ?? params.edb;
+		const earlyData = rawEarlyData === undefined || rawEarlyData === null ? undefined : parseInt(rawEarlyData, 10);
+		if (earlyData !== undefined && !Number.isNaN(earlyData)) {
+			transport.max_early_data = earlyData;
+		}
+	}
+	return transport;
 }
 
 // Parse boolean value from various formats

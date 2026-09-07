@@ -2,7 +2,10 @@ import { parseServerInfo, parseUrlParams, createTlsConfig, createTransportConfig
 
 export function parseTrojan(url) {
     const { addressPart, params, name } = parseUrlParams(url);
-    const [password, serverInfo] = addressPart.split('@');
+    // password may contain '@', split on the last one to keep host parsing correct
+    const atIndex = addressPart.lastIndexOf('@');
+    const password = atIndex === -1 ? addressPart : addressPart.slice(0, atIndex);
+    const serverInfo = atIndex === -1 ? '' : addressPart.slice(atIndex + 1);
     const { host, port } = parseServerInfo(serverInfo);
 
     const parsedURL = parseServerInfo(addressPart);
@@ -12,7 +15,8 @@ export function parseTrojan(url) {
     const transport = params.type !== 'tcp' ? createTransportConfig(params) : undefined;
     return {
         type: 'trojan',
-        tag: name,
+        // empty tags are dropped downstream, fall back to host:port
+        tag: name || (host ? `${host}:${port}` : ''),
         server: host,
         server_port: port,
         password: decodeURIComponent(password) || parsedURL.username,

@@ -18,6 +18,8 @@ export function parseHysteria2(url) {
         port = parsed.port;
         password = params.auth;
     }
+    // auth and password are aliases in the URI spec, keep both fields for consumers
+    if (!password && params.auth) password = params.auth;
 
     // Hysteria2 requires TLS by protocol design
     if (!params.security) params.security = 'tls';
@@ -28,10 +30,9 @@ export function parseHysteria2(url) {
         obfs.password = params['obfs-password'];
     }
 
-    const hopInterval = parseMaybeNumber(params['hop-interval']);
-
     return {
-        tag: name,
+        // empty tags are dropped downstream, fall back to host:port
+        tag: name || (host ? `${host}:${port}` : ''),
         type: 'hysteria2',
         server: host,
         server_port: port,
@@ -43,7 +44,8 @@ export function parseHysteria2(url) {
         up: params.up ?? (params.upmbps ? parseMaybeNumber(params.upmbps) : undefined),
         down: params.down ?? (params.downmbps ? parseMaybeNumber(params.downmbps) : undefined),
         ports: params.ports,
-        hop_interval: hopInterval,
+        // Clash reads seconds as a number; durations like "30s" stay raw for the builder.
+        hop_interval: /^\d+$/.test(params['hop-interval'] ?? '') ? Number(params['hop-interval']) : params['hop-interval'],
         alpn: parseArray(params.alpn),
         fast_open: parseBool(params['fast-open'])
     };

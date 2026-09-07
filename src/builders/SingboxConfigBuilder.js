@@ -17,6 +17,12 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
         // Copy to avoid mutating the parsed source object.
         const sanitized = { ...proxy };
 
+        // YAML-pasted h2 transports skip the protocol parsers; sing-box has no h2 type.
+        if (sanitized.transport?.type === 'h2') {
+            const h2Path = sanitized.transport.path;
+            sanitized.transport = { ...sanitized.transport, type: 'http', path: Array.isArray(h2Path) ? h2Path[0] : h2Path };
+        }
+
         // `udp` is Clash-only. Top-level `network` in sing-box is a TCP/UDP
         // allowlist; a stray "tcp" silently disables UDP for the node.
         delete sanitized.udp;
@@ -32,7 +38,82 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
             delete sanitized.alpn;
         }
 
-        delete sanitized.packet_encoding;
+        // sing-box rejects unknown encodings, keep only the valid ones.
+        if (proxy.packet_encoding !== 'xudp' && proxy.packet_encoding !== 'packetaddr') {
+            delete sanitized.packet_encoding;
+        } else {
+            sanitized.packet_encoding = proxy.packet_encoding;
+        }
+
+        if (sanitized.type === 'hysteria2') {
+            // sing-box names bandwidth caps `up_mbps`/`down_mbps`.
+            const upMbps = parseInt(sanitized.up, 10);
+            if (!Number.isNaN(upMbps)) {
+                sanitized.up_mbps = upMbps;
+            }
+            delete sanitized.up;
+            const downMbps = parseInt(sanitized.down, 10);
+            if (!Number.isNaN(downMbps)) {
+                sanitized.down_mbps = downMbps;
+            }
+            delete sanitized.down;
+            // sing-box takes a port list, not a comma-separated string.
+            if (sanitized.ports !== undefined && sanitized.ports !== null && String(sanitized.ports).trim() !== '') {
+                const serverPorts = String(sanitized.ports).split(',').map((port) => port.trim()).filter((port) => port !== '');
+                if (serverPorts.length > 0) {
+                    sanitized.server_ports = serverPorts;
+                }
+            }
+            delete sanitized.ports;
+            // Hop interval is a duration string in sing-box.
+            if (typeof sanitized.hop_interval === 'number' && Number.isFinite(sanitized.hop_interval)) {
+                sanitized.hop_interval = `${sanitized.hop_interval}s`;
+            } else if (typeof sanitized.hop_interval === 'string') {
+                const trimmedInterval = sanitized.hop_interval.trim();
+                if (/^\d+(\.\d+)?$/.test(trimmedInterval)) {
+                    sanitized.hop_interval = `${trimmedInterval}s`;
+                } else if (/^\d+(\.\d+)?s$/.test(trimmedInterval)) {
+                    sanitized.hop_interval = trimmedInterval;
+                } else {
+                    delete sanitized.hop_interval;
+                }
+            } else if (sanitized.hop_interval !== undefined) {
+                delete sanitized.hop_interval;
+            }
+            // No sing-box counterparts for these Clash-oriented fields.
+            delete sanitized.recv_window_conn;
+            delete sanitized.auth;
+            delete sanitized.fast_open;
+        }
+
+        if (sanitized.type === 'tuic') {
+            // sing-box spells the handshake flag in full.
+            if (sanitized.zero_rtt !== undefined) {
+                sanitized.zero_rtt_handshake = sanitized.zero_rtt;
+            }
+            delete sanitized.zero_rtt;
+            // DisableSNI lives inside `tls` for sing-box.
+            if (sanitized.disable_sni !== undefined) {
+                sanitized.tls = { ...sanitized.tls, disable_sni: sanitized.disable_sni };
+            }
+            delete sanitized.disable_sni;
+            // No sing-box counterparts for these Clash-oriented fields.
+            delete sanitized.reduce_rtt;
+            delete sanitized.flow;
+            delete sanitized.fast_open;
+        }
+
+        if (sanitized.type === 'trojan') {
+            // Trojan outbound has no `flow` field in sing-box.
+            delete sanitized.flow;
+        }
+
+        if (sanitized.type === 'shadowsocks' && sanitized.plugin_opts && typeof sanitized.plugin_opts === 'object') {
+            // sing-box wants the raw SIP003 option string, not a parsed object.
+            sanitized.plugin_opts = Object.entries(sanitized.plugin_opts)
+                .map(([key, value]) => (value === true ? key : `${key}=${value}`))
+                .join(';');
+        }
 
         return sanitized;
     }

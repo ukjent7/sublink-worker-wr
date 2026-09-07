@@ -8,16 +8,22 @@ export function parseTuic(url) {
         enabled: true,
         server_name: params.sni,
         alpn: parseArray(params.alpn),
-        insecure: parseBool(params['skip-cert-verify'] ?? params.insecure ?? params.allowInsecure, true)
+        // default to verifying certificates, opt out only when explicitly requested
+        insecure: parseBool(params['skip-cert-verify'] ?? params.insecure ?? params.allowInsecure, false)
     };
 
+    // password may contain ':', split on the first one only
+    const decodedUserinfo = decodeURIComponent(userinfo);
+    const sepIndex = decodedUserinfo.indexOf(':');
+
     return {
-        tag: name,
+        // empty tags are dropped downstream, fall back to host:port
+        tag: name || (host ? `${host}:${port}` : ''),
         type: 'tuic',
         server: host,
         server_port: port,
-        uuid: decodeURIComponent(userinfo).split(':')[0],
-        password: decodeURIComponent(userinfo).split(':')[1],
+        uuid: sepIndex === -1 ? decodedUserinfo : decodedUserinfo.slice(0, sepIndex),
+        password: sepIndex === -1 ? undefined : decodedUserinfo.slice(sepIndex + 1),
         congestion_control: params.congestion_control,
         tls,
         flow: params.flow ?? undefined,

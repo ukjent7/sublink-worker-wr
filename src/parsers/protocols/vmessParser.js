@@ -25,6 +25,12 @@ function buildHttpHeaders(vmessConfig) {
     return hostHeader ? { host: hostHeader } : undefined;
 }
 
+function firstPath(value) {
+    // sing-box HTTP transport takes a single path string, not a list.
+    if (Array.isArray(value)) return value[0] || '/';
+    return value || '/';
+}
+
 export function parseVmess(url) {
     let base64WithFragment = url.replace('vmess://', '');
     let tagOverride;
@@ -57,11 +63,10 @@ export function parseVmess(url) {
         };
     } else if ((networkType === 'tcp' && transportType === 'http') || networkType === 'http') {
         const method = vmessConfig.method || 'GET';
-        const path = vmessConfig.path || '/';
         transport = {
             type: 'http',
             method,
-            path: Array.isArray(path) ? path : [path],
+            path: firstPath(vmessConfig.path),
             headers: buildHttpHeaders(vmessConfig)
         };
     } else if (networkType === 'grpc') {
@@ -70,16 +75,20 @@ export function parseVmess(url) {
             service_name: vmessConfig?.path || vmessConfig?.serviceName
         };
     } else if (networkType === 'h2') {
+        // sing-box has no h2 transport; Xray h2 is HTTP/2 which sing-box models as http.
         const hostValue = vmessConfig.host || vmessConfig.sni;
         transport = {
-            type: 'h2',
-            path: vmessConfig.path,
-            host: hostValue ? (Array.isArray(hostValue) ? hostValue : [hostValue]) : undefined
+            type: 'http',
+            method: vmessConfig.method || 'GET',
+            path: firstPath(vmessConfig.path),
+            host: hostValue ? (Array.isArray(hostValue) ? hostValue : [hostValue]) : undefined,
+            headers: buildHttpHeaders(vmessConfig)
         };
     }
 
     return {
-        tag: tagOverride || vmessConfig.ps,
+        // empty tags are dropped downstream, fall back to host:port
+        tag: (tagOverride || vmessConfig.ps) || (vmessConfig.add ? `${vmessConfig.add}:${vmessConfig.port}` : ''),
         type: 'vmess',
         server: vmessConfig.add,
         server_port: parseInt(vmessConfig.port),

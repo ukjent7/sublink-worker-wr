@@ -9,17 +9,21 @@ export function parseVless(url) {
     if (tls.reality) {
         tls.utls = {
             enabled: true,
-            fingerprint: 'chrome'
+            // Respect the fp carried by the link; fall back to the previous default.
+            fingerprint: params.fp || 'chrome'
         };
     }
     const transport = params.type !== 'tcp' ? createTransportConfig(params) : undefined;
 
     // `udp` is a Clash-only flag; ClashConfigBuilder reads it, SingboxConfigBuilder strips it.
     const udp = params.udp !== undefined ? parseBool(params.udp) : undefined;
+    // Accept both camelCase and snake_case spellings from link authors.
+    const packetEncoding = params.packetEncoding ?? params.packet_encoding;
 
     return {
         type: 'vless',
-        tag: name,
+        // empty tags are dropped downstream, fall back to host:port
+        tag: name || (host ? `${host}:${port}` : ''),
         server: host,
         server_port: port,
         uuid: decodeURIComponent(uuid),
@@ -27,6 +31,8 @@ export function parseVless(url) {
         tls,
         transport,
         flow: params.flow ?? undefined,
+        // Pass through untouched; validation belongs to the conversion layer.
+        ...(packetEncoding ? { packet_encoding: packetEncoding } : {}),
         ...(udp !== undefined ? { udp } : {})
     };
 }
