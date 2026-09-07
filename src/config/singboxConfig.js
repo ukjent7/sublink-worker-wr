@@ -1,0 +1,343 @@
+/**
+ * Sing-box Configuration
+ * Fixed skeleton: only `outbounds` may be filled by builders.
+ * Every other section is immutable and must not be modified by code.
+ */
+
+export const SING_BOX_CONFIG = {
+  "log": {
+    "level": "warn"
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "hosts",
+        "tag": "hosts",
+        "predefined": {
+          "dns.google": [
+            "8.8.8.8",
+            "8.8.4.4",
+            "2001:4860:4860::8888",
+            "2001:4860:4860::8844"
+          ],
+          "dns.alidns.com": [
+            "223.5.5.5",
+            "223.6.6.6",
+            "2400:3200::1",
+            "2400:3200:baba::1"
+          ],
+          "one.one.one.one": [
+            "1.1.1.1",
+            "1.0.0.1",
+            "2606:4700:4700::1111",
+            "2606:4700:4700::1001"
+          ],
+          "1dot1dot1dot1.cloudflare-dns.com": [
+            "1.1.1.1",
+            "1.0.0.1",
+            "2606:4700:4700::1111",
+            "2606:4700:4700::1001"
+          ],
+          "cloudflare-dns.com": [
+            "104.16.249.249",
+            "104.16.248.249",
+            "2606:4700::6810:f8f9",
+            "2606:4700::6810:f9f9"
+          ],
+          "dns.cloudflare.com": [
+            "162.159.61.8",
+            "172.64.41.8",
+            "2a06:98c1:52::8",
+            "2803:f800:53::8"
+          ],
+          "dot.pub": [
+            "1.12.12.12",
+            "120.53.53.53"
+          ],
+          "doh.pub": [
+            "1.12.12.12",
+            "120.53.53.53"
+          ],
+          "dns.quad9.net": [
+            "9.9.9.9",
+            "149.112.112.112",
+            "2620:fe::fe",
+            "2620:fe::9"
+          ],
+          "dns.yandex.net": [
+            "77.88.8.8",
+            "77.88.8.1",
+            "2a02:6b8::feed:ff",
+            "2a02:6b8:0:1::feed:ff"
+          ],
+          "dns.sb": [
+            "45.11.45.11",
+            "185.222.222.222",
+            "2a09::",
+            "2a11::"
+          ],
+          "dns.umbrella.com": [
+            "208.67.220.220",
+            "208.67.222.222",
+            "2620:119:35::35",
+            "2620:119:53::53"
+          ],
+          "dns.sse.cisco.com": [
+            "208.67.220.220",
+            "208.67.222.222",
+            "2620:119:35::35",
+            "2620:119:53::53"
+          ],
+          "engage.cloudflareclient.com": [
+            "162.159.192.1",
+            "2606:4700:d0::a29f:c001"
+          ]
+        }
+      },
+      {
+        "type": "udp",
+        "tag": "direct-dns",
+        "server": "119.29.29.29"
+      },
+      {
+        "type": "https",
+        "tag": "remote-dns",
+        "detour": "🌐 全局",
+        "domain_resolver": "hosts",
+        "server": "cloudflare-dns.com",
+        "tls": {
+          "enabled": true,
+          "server_name": "cloudflare-dns.com"
+        },
+        "path": "/dns-query"
+      }
+    ],
+    "rules": [
+      {
+        "domain": [
+          "dns.google",
+          "dns.alidns.com",
+          "one.one.one.one",
+          "1dot1dot1dot1.cloudflare-dns.com",
+          "cloudflare-dns.com",
+          "dns.cloudflare.com",
+          "dot.pub",
+          "doh.pub",
+          "dns.quad9.net",
+          "dns.yandex.net",
+          "dns.sb",
+          "dns.umbrella.com",
+          "dns.sse.cisco.com",
+          "engage.cloudflareclient.com"
+        ],
+        "server": "hosts"
+      },
+      {
+        "domain": "cloudflare-dns.com",
+        "server": "direct-dns"
+      },
+      {
+        "domain_suffix": [
+          "alidns.com",
+          "doh.pub",
+          "dot.pub",
+          "360.cn",
+          "onedns.net"
+        ],
+        "server": "direct-dns"
+      },
+      {
+        "rule_set": "geosite-google",
+        "server": "remote-dns"
+      },
+      {
+        "rule_set": [
+          "geosite-private",
+          "geosite-cn"
+        ],
+        "server": "direct-dns"
+      }
+    ],
+    "final": "remote-dns"
+  },
+  "http_clients": [
+    {
+      "tag": "proxy-http",
+      "version": 2,
+      "detour": "🌐 全局",
+      "domain_resolver": "direct-dns",
+      "stream_receive_window": 0,
+      "connection_receive_window": 0
+    }
+  ],
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 10606,
+      "set_system_proxy": true
+    },
+    {
+      "type": "tun",
+      "tag": "tun-dormant",
+      "interface_name": "sing-dormant",
+      "mtu": 9000,
+      "address": "172.19.0.1/30",
+      "dns_mode": "disabled",
+      "stack": "gvisor",
+      "platform": {
+        "http_proxy": {
+          "enabled": true,
+          "server": "127.0.0.1",
+          "server_port": 10606
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct",
+      "domain_resolver": "direct-dns"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    },
+    {
+      "type": "selector",
+      "tag": "📌 单节点",
+      "outbounds": []
+    },
+    {
+      "type": "selector",
+      "tag": "🌐 全局",
+      "outbounds": [
+        "📌 单节点",
+        "direct"
+      ],
+      "default": "📌 单节点"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff",
+        "sniffer": [
+          "http",
+          "tls"
+        ]
+      },
+      {
+        "network": "udp",
+        "port": 443,
+        "outbound": "block"
+      },
+      {
+        "rule_set": "geosite-google",
+        "outbound": "🌐 全局"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      },
+      {
+        "rule_set": "geosite-private",
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "223.5.5.5",
+          "223.6.6.6",
+          "2400:3200::1",
+          "2400:3200:baba::1",
+          "119.29.29.29",
+          "1.12.12.12",
+          "120.53.53.53",
+          "2402:4e00::",
+          "2402:4e00:1::",
+          "180.76.76.76",
+          "2400:da00::6666",
+          "114.114.114.114",
+          "114.114.115.115",
+          "114.114.114.119",
+          "114.114.115.119",
+          "114.114.114.110",
+          "114.114.115.110",
+          "180.184.1.1",
+          "180.184.2.2",
+          "101.226.4.6",
+          "218.30.118.6",
+          "123.125.81.6",
+          "140.207.198.6",
+          "1.2.4.8",
+          "210.2.4.8",
+          "52.80.66.66",
+          "117.50.22.22",
+          "2400:7fc0:849e:200::4",
+          "2404:c2c0:85d8:901::4",
+          "117.50.10.10",
+          "52.80.52.52",
+          "2400:7fc0:849e:200::8",
+          "2404:c2c0:85d8:901::8",
+          "117.50.60.30",
+          "52.80.60.30"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "domain_suffix": [
+          "alidns.com",
+          "doh.pub",
+          "dot.pub",
+          "360.cn",
+          "onedns.net"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "rule_set": "geoip-cn",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": "geosite-cn",
+        "outbound": "direct"
+      }
+    ],
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "geosite-google",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-private",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-private.srs",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geosite-cn",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs",
+        "update_interval": "24h0m0s"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-cn",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs",
+        "update_interval": "24h0m0s"
+      }
+    ],
+    "final": "🌐 全局",
+    "default_domain_resolver": "direct-dns",
+    "default_http_client": "proxy-http"
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    }
+  }
+};

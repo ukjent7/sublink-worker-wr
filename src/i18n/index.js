@@ -1,0 +1,300 @@
+import { APP_NAME } from '../constants.js';
+import { checkStartsWith } from "../utils.js";
+
+// 定义语言包
+export const translations = {
+  'zh-CN': {
+    missingInput: '缺少输入参数',
+    missingConfig: '缺少配置参数',
+    missingUrl: '缺少URL参数',
+    shortUrlNotFound: '短链接未找到',
+    invalidShortUrl: '无效的短链接',
+    urlParsedSuccess: '已成功解析订阅链接配置',
+    internalError: '内部服务器错误',
+    notFound: '未找到',
+    invalidFormat: '无效格式：',
+    defaultRules: ['广告拦截', '谷歌服务', '国外媒体', '电报消息'],
+    configValidationError: '配置验证错误：',
+    pageDescription: `${APP_NAME} - 订阅链接转换工具`,
+    pageKeywords: '订阅链接,转换,Xray,SingBox,Clash,Surge',
+    pageTitle: `${APP_NAME} - 订阅链接转换工具`,
+    ogTitle: `${APP_NAME} - 订阅链接转换工具`,
+    ogDescription: '一个强大的订阅链接转换工具，支持多种客户端格式',
+    shareUrls: '输入源',
+    urlPlaceholder: '支持粘贴：分享链接、Clash 配置、Sing-Box 配置、Surge 配置...',
+    convert: '转换',
+    clear: '清除',
+    paste: '粘贴',
+    processing: '处理中...',
+    errorGeneratingLinks: '生成链接时出错',
+    confirmClearAll: '确定要清除所有内容吗？',
+    customPath: '自定义路径',
+    savedPaths: '已保存的路径',
+    shortenLinks: '生成短链接',
+    ruleSelectionTooltip: '选择您需要的规则集',
+    convertToJSON: '转换为JSON',
+    convertToForm: '转换为表单',
+    clearAll: '清空所有',
+    addJSONRule: '添加JSON规则',
+    confirmClearAllRules: '确定要清空所有自定义规则吗？',
+    // 规则名称和出站名称的翻译
+    outboundNames: {
+      'Node Select': '🚀 节点选择',
+      'Fall Back': '🐟 漏网之鱼',
+      'GLOBAL': 'GLOBAL'
+    },
+    subscriptionLinks: '订阅链接',
+    xrayLink: 'Xray 链接 (Base64)',
+    singboxLink: 'SingBox 链接',
+    clashLink: 'Clash 链接',
+    surgeLink: 'Surge 链接',
+    copied: '已复制！',
+    shortening: '正在生成短链接...',
+    alreadyShortened: '链接已经是短链接了！',
+    shortenFailed: '生成短链接失败，请重试',
+    customShortCode: '自定义短链接代码',
+    optional: '可选',
+    customShortCodePlaceholder: '留空自动生成，或输入自定义代码',
+    showFullLinks: '显示完整链接',
+    noLinkProvided: '没有提供链接！',
+    scanQRCode: '扫描二维码',
+    tryShortLinks: '请尝试使用短链接！',
+    error: '错误：',
+    validJSON: '有效的JSON',
+    rules: '条规则',
+    rule: '规则',
+    // UpdateChecker
+    newVersionAvailable: '发现新版本',
+    viewRelease: '查看更新',
+    updateGuide: '更新指南',
+    later: '稍后'
+  },
+  'en-US': {
+    missingInput: 'Missing input parameter',
+    missingConfig: 'Missing config parameter',
+    missingUrl: 'Missing URL parameter',
+    shortUrlNotFound: 'Short URL not found',
+    invalidShortUrl: 'Invalid short URL',
+    urlParsedSuccess: 'Successfully parsed subscription link configuration',
+    internalError: 'Internal Server Error',
+    notFound: 'Not Found',
+    invalidFormat: 'Invalid format: ',
+    defaultRules: ['Ad Blocking', 'Google Services', 'Foreign Media', 'Telegram'],
+    configValidationError: 'Config validation error: ',
+    pageDescription: `${APP_NAME} - Subscription Link Converter`,
+    pageKeywords: 'subscription link,converter,Xray,SingBox,Clash,Surge',
+    pageTitle: `${APP_NAME} - Subscription Link Converter`,
+    ogTitle: `${APP_NAME} - Subscription Link Converter`,
+    ogDescription: 'A powerful subscription link converter supporting multiple client formats',
+    shareUrls: 'Input Source',
+    urlPlaceholder: 'Paste share links, Clash config, Sing-Box config, or Surge config...',
+    convert: 'Convert',
+    clear: 'Clear',
+    paste: 'Paste',
+    processing: 'Processing...',
+    errorGeneratingLinks: 'Error generating links',
+    confirmClearAll: 'Are you sure you want to clear all?',
+    customPath: 'Custom Path',
+    savedPaths: 'Saved Paths',
+    shortenLinks: 'Generate Short Links',
+    ruleSelectionTooltip: 'Select your desired rule sets',
+    convertToJSON: 'Convert to JSON',
+    convertToForm: 'Convert to Form',
+    clearAll: 'Clear All',
+    addJSONRule: 'Add JSON Rule',
+    outboundNames: {
+      'Node Select': '🚀 Node Select',
+      'Fall Back': '🐟 Fall Back',
+      'GLOBAL': 'GLOBAL'
+    },
+    subscriptionLinks: 'Subscription Links',
+    xrayLink: 'Xray Link (Base64)',
+    singboxLink: 'SingBox Link',
+    clashLink: 'Clash Link',
+    surgeLink: 'Surge Link',
+    copied: 'Copied!',
+    shortening: 'Shortening...',
+    alreadyShortened: 'Links are already shortened!',
+    shortenFailed: 'Failed to shorten URLs. Please try again.',
+    customShortCode: 'Custom Short Code',
+    optional: 'Optional',
+    customShortCodePlaceholder: 'Leave empty for auto-generation, or enter custom code',
+    showFullLinks: 'Show Full Links',
+    noLinkProvided: 'No link provided!',
+    scanQRCode: 'Scan QR Code',
+    tryShortLinks: 'Try to use short links!',
+    error: 'Error: ',
+    validJSON: 'Valid JSON',
+    rules: 'rules',
+    rule: 'Rule',
+    // UpdateChecker
+    newVersionAvailable: 'New Version Available',
+    viewRelease: 'View Release',
+    updateGuide: 'Update Guide',
+    later: 'Later'
+  },
+  'fa': {
+    missingInput: 'پارامتر ورودی وجود ندارد',
+    missingConfig: 'پارامتر پیکربندی وجود ندارد',
+    missingUrl: 'پارامتر URL وجود ندارد',
+    shortUrlNotFound: 'لینک کوتاه پیدا نشد',
+    invalidShortUrl: 'لینک کوتاه نامعتبر',
+    urlParsedSuccess: 'پیکربندی لینک اشتراک با موفقیت تجزیه شد',
+    internalError: 'خطای داخلی سرور',
+    notFound: 'یافت نشد',
+    invalidFormat: 'فرمت نامعتبر: ',
+    defaultRules: ['مسدودسازی تبلیغات', 'سرویس‌های گوگل', 'رسانه‌های خارجی', 'تلگرام'],
+    configValidationError: 'خطای اعتبارسنجی پیکربندی: ',
+    pageDescription: `${APP_NAME} - مبدل لینک اشتراک`,
+    pageKeywords: 'لینک اشتراک,مبدل,Xray,SingBox,Clash,Surge',
+    pageTitle: `${APP_NAME} - مبدل لینک اشتراک`,
+    ogTitle: `${APP_NAME} - مبدل لینک اشتراک`,
+    ogDescription: 'یک مبدل قدرتمند لینک اشتراک با پشتیبانی از فرمت‌های مختلف',
+    shareUrls: 'منبع ورودی',
+    urlPlaceholder: 'لینک‌های اشتراک، پیکربندی Clash، Sing-Box یا Surge را جایگذاری کنید...',
+    convert: 'تبدیل',
+    clear: 'پاک کردن',
+    paste: 'چسباندن',
+    processing: 'در حال پردازش...',
+    errorGeneratingLinks: 'خطا در ایجاد لینک‌ها',
+    confirmClearAll: 'آیا مطمئن هستید که می‌خواهید همه را پاک کنید؟',
+    customPath: 'مسیر سفارشی',
+    savedPaths: 'مسیرهای ذخیره شده',
+    shortenLinks: 'ایجاد لینک‌های کوتاه',
+    ruleSelectionTooltip: 'مجموعه قوانین مورد نظر خود را انتخاب کنید',
+    convertToJSON: 'تبدیل به JSON',
+    convertToForm: 'تبدیل به فرم',
+    clearAll: 'پاک کردن همه',
+    addJSONRule: 'افزودن قانون JSON',
+    confirmClearAllRules: 'آیا مطمئن هستید که می‌خواهید همه قوانین سفارشی را پاک کنید؟',
+    outboundNames: {
+      'Node Select': '🚀 انتخاب نود',
+      'Fall Back': '🐟 فال بک',
+      'GLOBAL': 'GLOBAL'
+    },
+    subscriptionLinks: 'لینک‌های اشتراک',
+    xrayLink: 'لینک Xray (Base64)',
+    singboxLink: 'لینک SingBox',
+    clashLink: 'لینک Clash',
+    surgeLink: 'لینک Surge',
+    copied: 'کپی شد!',
+    shortening: 'در حال کوتاه کردن...',
+    alreadyShortened: 'لینک‌ها از قبل کوتاه شده‌اند!',
+    shortenFailed: 'کوتاه کردن URL ناموفق بود. لطفاً دوباره تلاش کنید.',
+    customShortCode: 'کد کوتاه سفارشی',
+    optional: 'اختیاری',
+    customShortCodePlaceholder: 'برای تولید خودکار خالی بگذارید یا کد سفارشی وارد کنید',
+    showFullLinks: 'نمایش لینک‌های کامل',
+    noLinkProvided: 'لینکی ارائه نشده است!',
+    scanQRCode: 'اسکن کد QR',
+    tryShortLinks: 'لطفاً از لینک‌های کوتاه استفاده کنید!',
+    error: 'خطا: ',
+    validJSON: 'JSON معتبر',
+    rules: 'قوانین',
+    rule: 'قانون',
+    // UpdateChecker
+    newVersionAvailable: 'نسخه جدید موجود است',
+    viewRelease: 'مشاهده انتشار',
+    updateGuide: 'راهنمای به‌روزرسانی',
+    later: 'بعداً'
+  },
+  'ru': {
+    missingInput: 'Отсутствует входной параметр',
+    missingConfig: 'Отсутствует параметр конфигурации',
+    missingUrl: 'Отсутствует параметр URL',
+    shortUrlNotFound: 'Короткая ссылка не найдена',
+    invalidShortUrl: 'Недопустимая короткая ссылка',
+    urlParsedSuccess: 'Конфигурация ссылки подписки успешно разобрана',
+    internalError: 'Внутренняя ошибка сервера',
+    notFound: 'Не найдено',
+    invalidFormat: 'Недопустимый формат: ',
+    defaultRules: ['Блокировка рекламы', 'Сервисы Google', 'Зарубежные медиа', 'Telegram'],
+    configValidationError: 'Ошибка проверки конфигурации: ',
+    pageDescription: `${APP_NAME} - инструмент для преобразования ссылок подписки`,
+    pageKeywords: 'ссылка подписки,преобразование,Xray,SingBox,Clash,Surge',
+    pageTitle: `${APP_NAME} - инструмент для преобразования ссылок подписки`,
+    ogTitle: `${APP_NAME} - инструмент для преобразования ссылок подписки`,
+    ogDescription: 'Мощный инструмент для преобразования ссылок подписки, поддерживающий различные форматы клиентов',
+    shareUrls: 'Источник ввода',
+    urlPlaceholder: 'Вставьте ссылки, конфигурацию Clash, Sing-Box или Surge...',
+    convert: 'Преобразовать',
+    clear: 'Очистить',
+    paste: 'Вставить',
+    processing: 'Обработка...',
+    errorGeneratingLinks: 'Ошибка при создании ссылок',
+    confirmClearAll: 'Вы уверены, что хотите очистить всё?',
+    customPath: 'Пользовательский путь',
+    savedPaths: 'Сохранённые пути',
+    shortenLinks: 'Создать короткие ссылки',
+    ruleSelectionTooltip: 'Выберите нужные наборы правил',
+    convertToJSON: 'Конвертировать в JSON',
+    convertToForm: 'Конвертировать в форму',
+    clearAll: 'Очистить всё',
+    addJSONRule: 'Добавить правило JSON',
+    confirmClearAllRules: 'Вы уверены, что хотите очистить все пользовательские правила?',
+    outboundNames: {
+      'Node Select': '🚀 Выбор узла',
+      'Fall Back': '🐟 Резерв',
+      'GLOBAL': 'GLOBAL'
+    },
+    subscriptionLinks: 'Ссылки подписки',
+    xrayLink: 'Ссылка Xray (Base64)',
+    singboxLink: 'Ссылка SingBox',
+    clashLink: 'Ссылка Clash',
+    surgeLink: 'Ссылка Surge',
+    copied: 'Скопировано!',
+    shortening: 'Сокращение...',
+    alreadyShortened: 'Ссылки уже сокращены!',
+    shortenFailed: 'Не удалось сократить URL. Пожалуйста, попробуйте еще раз.',
+    customShortCode: 'Пользовательский короткий код',
+    optional: 'Необязательно',
+    customShortCodePlaceholder: 'Оставьте пустым для автогенерации или введите свой код',
+    showFullLinks: 'Показать полные ссылки',
+    noLinkProvided: 'Ссылка не предоставлена!',
+    scanQRCode: 'Сканировать QR-код',
+    tryShortLinks: 'Попробуйте использовать короткие ссылки!',
+    error: 'Ошибка: ',
+    validJSON: 'Действительный JSON',
+    rules: 'правила',
+    rule: 'Правило',
+    // UpdateChecker
+    newVersionAvailable: 'Доступна новая версия',
+    viewRelease: 'Посмотреть релиз',
+    updateGuide: 'Руководство по обновлению',
+    later: 'Позже'
+  }
+};
+
+export function resolveLanguage(lang) {
+  if (translations[lang]) {
+    return lang;
+  } else if (checkStartsWith(lang, 'en')) {
+    return 'en-US';
+  } else if (checkStartsWith(lang, 'fa')) {
+    return 'fa';
+  } else if (checkStartsWith(lang, 'ru')) {
+    return 'ru';
+  } else {
+    return 'zh-CN';
+  }
+}
+
+export function createTranslator(lang) {
+  const currentLang = resolveLanguage(lang);
+
+  return function t(key) {
+    const keys = key.split('.');
+    let value = translations[currentLang];
+
+    for (const k of keys) {
+      value = value?.[k];
+      if (value === undefined) {
+        if (checkStartsWith(key, 'outboundNames.')) {
+          return key.split('.')[1];
+        }
+        return key;
+      }
+    }
+    return value;
+  };
+}
