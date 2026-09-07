@@ -11,6 +11,10 @@ export function parseTuic(url) {
         // default to verifying certificates, opt out only when explicitly requested
         insecure: parseBool(params['skip-cert-verify'] ?? params.insecure ?? params.allowInsecure, false)
     };
+    const pinned = parseArray(params.pinSHA256);
+    if (pinned && pinned.length > 0) {
+        tls.certificate_public_key_sha256 = pinned;
+    }
 
     // password may contain ':', split on the first one only
     const decodedUserinfo = decodeURIComponent(userinfo);

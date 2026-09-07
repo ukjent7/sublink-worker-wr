@@ -247,6 +247,11 @@ export function createTlsConfig(params) {
 		if (alpn && alpn.length > 0) {
 			tls.alpn = alpn;
 		}
+		// Xray pinSHA256 maps to sing-box certificate_public_key_sha256.
+		const pinned = parseArray(params.pinSHA256);
+		if (pinned && pinned.length > 0) {
+			tls.certificate_public_key_sha256 = pinned;
+		}
 	}
 	return tls;
 }
