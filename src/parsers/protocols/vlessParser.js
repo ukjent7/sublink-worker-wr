@@ -27,7 +27,6 @@ export function parseVless(url) {
         server: host,
         server_port: port,
         uuid: decodeURIComponent(uuid),
-        tcp_fast_open: false,
         tls,
         transport,
         flow: params.flow ?? undefined,

@@ -20,7 +20,6 @@ export function parseTrojan(url) {
         server: host,
         server_port: port,
         password: decodeURIComponent(password) || parsedURL.username,
-        tcp_fast_open: false,
         tls,
         transport,
         flow: params.flow ?? undefined

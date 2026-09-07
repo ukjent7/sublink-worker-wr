@@ -78,7 +78,10 @@ export function createApp(bindings = {}) {
             if (userinfo) {
                 c.header('subscription-userinfo', userinfo);
             }
-            return c.json(builder.config);
+            // Pretty-print with 2-space indent, same as sing-box's own FormatConfig.
+            return c.text(JSON.stringify(builder.config, null, 2), 200, {
+                'Content-Type': 'application/json; charset=utf-8'
+            });
         } catch (error) {
             return handleError(c, error, runtime.logger);
         }
