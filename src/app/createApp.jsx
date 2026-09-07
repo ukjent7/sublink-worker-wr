@@ -10,13 +10,11 @@ import { SingboxConfigBuilder } from '../builders/SingboxConfigBuilder.js';
 import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
-import { encodeBase64, tryDecodeSubscriptionLines } from '../utils.js';
+import { encodeBase64, tryDecodeSubscriptionLines, V2RAYN_USER_AGENT } from '../utils.js';
 import { APP_NAME, APP_SUBTITLE } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
 import { ServiceError, MissingDependencyError } from '../services/errors.js';
 import { normalizeRuntime } from '../runtime/runtimeConfig.js';
-
-const DEFAULT_USER_AGENT = 'curl/7.74.0';
 
 export function createApp(bindings = {}) {
     const runtime = normalizeRuntime(bindings);
@@ -140,7 +138,7 @@ export function createApp(bindings = {}) {
         const proxylist = inputString.split('\n');
         const finalProxyList = [];
         let subscriptionUserinfo;
-        const userAgent = getRequestHeader(c.req, 'User-Agent') || DEFAULT_USER_AGENT;
+        const userAgent = getRequestHeader(c.req, 'User-Agent') || V2RAYN_USER_AGENT;
         const headers = { 'User-Agent': userAgent };
 
         for (const proxy of proxylist) {

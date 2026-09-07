@@ -1,8 +1,5 @@
 import { ProxyParser } from '../parsers/index.js';
-import { deepCopy, tryDecodeSubscriptionLines, decodeBase64 } from '../utils.js';
-
-// Fixed UA for fetching subscriptions. Custom UA was an advanced option and is gone.
-const FETCH_USER_AGENT = 'curl/7.74.0';
+import { deepCopy, tryDecodeSubscriptionLines, decodeBase64, V2RAYN_USER_AGENT } from '../utils.js';
 
 // Skeleton configs are immutable except for filling outbound entries:
 // builders may only append node entries and member references, never
@@ -44,7 +41,7 @@ export class BaseConfigBuilder {
                     if (item && typeof item === 'object' && item.tag) {
                         bucket.push(item);
                     } else if (typeof item === 'string' && item.trim() !== '') {
-                        const subResult = await ProxyParser.parse(item.trim(), FETCH_USER_AGENT);
+                        const subResult = await ProxyParser.parse(item.trim(), V2RAYN_USER_AGENT);
                         if (Array.isArray(subResult)) {
                             subResult.forEach(entry => pushProxy(bucket, entry));
                         } else if (subResult && typeof subResult === 'object' && Array.isArray(subResult.proxies)) {
@@ -99,7 +96,7 @@ export class BaseConfigBuilder {
                 if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
                     const { fetchSubscriptionWithFormat } = await import('../parsers/subscription/httpSubscriptionFetcher.js');
                     try {
-                        const fetchResult = await fetchSubscriptionWithFormat(trimmedUrl, FETCH_USER_AGENT);
+                        const fetchResult = await fetchSubscriptionWithFormat(trimmedUrl, V2RAYN_USER_AGENT);
                         if (!fetchResult) continue;
                         if (fetchResult.subscriptionUserinfo && !this.subscriptionUserinfo) {
                             this.subscriptionUserinfo = fetchResult.subscriptionUserinfo;
@@ -115,7 +112,7 @@ export class BaseConfigBuilder {
                     continue;
                 }
 
-                const result = await ProxyParser.parse(trimmedUrl, FETCH_USER_AGENT);
+                const result = await ProxyParser.parse(trimmedUrl, V2RAYN_USER_AGENT);
                 await collectParsed(result, singles);
             }
         }

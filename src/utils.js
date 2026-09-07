@@ -178,6 +178,10 @@ export function generateWebPath(length = PATH_LENGTH) {
 	return result
 }
 
+// v2rayN default subscription UA: DownloadService falls back to
+// Utils.GetVersion(false) ("{AppName}/{version}").
+export const V2RAYN_USER_AGENT = 'v2rayN/7.24.9';
+
 export function parseServerInfo(serverInfo) {
 	if (!serverInfo || typeof serverInfo !== 'string') {
 		return { host: null, port: null };
