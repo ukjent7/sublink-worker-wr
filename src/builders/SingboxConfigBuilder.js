@@ -45,6 +45,13 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
             sanitized.packet_encoding = proxy.packet_encoding;
         }
 
+        // `insecure` defaults to false, omit it like the official formatter does.
+        if (sanitized.tls && sanitized.tls.insecure === false) {
+            const tls = { ...sanitized.tls };
+            delete tls.insecure;
+            sanitized.tls = tls;
+        }
+
         if (sanitized.type === 'hysteria2') {
             // sing-box names bandwidth caps `up_mbps`/`down_mbps`.
             const upMbps = parseInt(sanitized.up, 10);
