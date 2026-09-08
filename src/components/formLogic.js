@@ -107,55 +107,34 @@ export const formLogicFn = (t) => {
                 this.shortening = true;
                 try {
                     const origin = window.location.origin;
-                    const shortened = {};
+                    const prefixMap = { xray: 'x', singbox: 'b', clash: 'c', surge: 's' };
 
-                    // Use custom short code if provided, otherwise let backend generate it once
-                    let shortCode = this.customShortCode.trim();
-                    let isFirstRequest = true;
-
-                    // Shorten each link type
-                    for (const [type, url] of Object.entries(this.generatedLinks)) {
-                        try {
-                            let apiUrl = `${origin}/shorten-v2?url=${encodeURIComponent(url)}`;
-
-                            // For the first request, either use custom code or let backend generate
-                            // For subsequent requests, use the code from first request
-                            if (shortCode) {
-                                apiUrl += `&shortCode=${encodeURIComponent(shortCode)}`;
-                            }
-
-                            const response = await fetch(apiUrl);
-                            if (!response.ok) {
-                                throw new Error(`Failed to shorten ${type} link`);
-                            }
-                            const returnedCode = await response.text();
-
-                            // If this is the first request and no custom code was provided,
-                            // use the backend-generated code for all subsequent requests
-                            if (isFirstRequest && !shortCode) {
-                                shortCode = returnedCode;
-                            }
-                            isFirstRequest = false;
-
-                            // Map types to their corresponding path prefixes
-                            const prefixMap = {
-                                xray: 'x',
-                                singbox: 'b',
-                                clash: 'c',
-                                surge: 's'
-                            };
-
-                            shortened[type] = `${origin}/${prefixMap[type]}/${returnedCode}`;
-                        } catch (error) {
-                            console.error(`Error shortening ${type} link:`, error);
-                            throw error;
-                        }
+                    // One request is enough: the backend stores only the query
+                    // string, and the four links differ just by path prefix.
+                    // Sending the payload four times multiplied the chance of
+                    // tripping request-line limits.
+                    let apiUrl = `${origin}/shorten-v2?url=${encodeURIComponent(this.generatedLinks.singbox)}`;
+                    const customCode = this.customShortCode.trim();
+                    if (customCode) {
+                        apiUrl += `&shortCode=${encodeURIComponent(customCode)}`;
                     }
 
-                    this.shortenedLinks = shortened;
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        // The backend answers failures with a one-line message,
+                        // so surface it instead of a generic alert.
+                        const detail = (await response.text()).slice(0, 200).trim();
+                        throw new Error(`${response.status}${detail ? ` ${detail}` : ''}`);
+                    }
+
+                    const shortCode = (await response.text()).trim();
+                    this.shortenedLinks = Object.fromEntries(
+                        Object.entries(prefixMap).map(([type, prefix]) => [type, `${origin}/${prefix}/${shortCode}`])
+                    );
                 } catch (error) {
                     console.error('Error shortening links:', error);
-                    alert(window.APP_TRANSLATIONS.shortenFailed);
+                    const prefix = window.APP_TRANSLATIONS?.shortenFailed || 'Failed to shorten links';
+                    alert(`${prefix}: ${error.message}`);
                 } finally {
                     this.shortening = false;
                 }

@@ -9,7 +9,7 @@ let restoreGlobals = null;
 function createScope(saved = {}) {
     const storage = new Map(Object.entries(saved));
     const watched = new Map();
-    const names = ['window', 'localStorage', 'alert', 'confirm', 'document'];
+    const names = ['window', 'localStorage', 'alert', 'confirm', 'document', 'fetch'];
     const previous = names.map(name => [name, globalThis[name]]);
 
     globalThis.window = {
@@ -95,5 +95,59 @@ describe('form logic custom routing', () => {
 
         scope.populateFormFromUrl(new URL('https://sub.example/singbox?config=def'));
         expect(scope.routeRules).toBe('a.com => us');
+    });
+});
+
+describe('form logic link shortening', () => {
+    function withFetch(handler) {
+        const scope = createScope().scope;
+        const calls = [];
+        const alerts = [];
+        globalThis.fetch = async (url) => {
+            calls.push(url);
+            return handler(calls.length);
+        };
+        globalThis.alert = message => alerts.push(message);
+        scope.input = CONFIG;
+        scope.submitForm();
+        return { scope, calls, alerts };
+    }
+
+    const okResponse = () => ({ ok: true, status: 200, text: async () => 'AbC1234' });
+
+    it('sends a single request and derives every format from its code', async () => {
+        const { scope, calls } = withFetch(okResponse);
+        await scope.shortenLinks();
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0]).toContain('/shorten-v2?url=');
+        expect(scope.shortenedLinks).toEqual({
+            xray: 'https://sub.example/x/AbC1234',
+            singbox: 'https://sub.example/b/AbC1234',
+            clash: 'https://sub.example/c/AbC1234',
+            surge: 'https://sub.example/s/AbC1234'
+        });
+    });
+
+    it('passes a custom short code through once', async () => {
+        const { scope, calls } = withFetch(okResponse);
+        scope.customShortCode = 'myOwnCode';
+        await scope.shortenLinks();
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0]).toContain(`shortCode=${encodeURIComponent('myOwnCode')}`);
+    });
+
+    it('reports the backend reason instead of a bare failure', async () => {
+        const { scope, alerts } = withFetch(() => ({
+            ok: false,
+            status: 500,
+            text: async () => 'Error: Reached the max retries per request limit (which is 20)'
+        }));
+        await scope.shortenLinks();
+
+        expect(scope.shortenedLinks).toBeNull();
+        expect(alerts[0]).toContain('500');
+        expect(alerts[0]).toContain('max retries per request limit');
     });
 });
