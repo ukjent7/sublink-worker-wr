@@ -54,6 +54,8 @@ Sublink Worker 是多平台代理订阅转换器：将各类协议（ShadowSocks
 
 **Builder 模式**：`SingboxConfigBuilder` / `ClashConfigBuilder` / `SurgeConfigBuilder` 都继承 `BaseConfigBuilder`。子类必须实现：`getProxies()`、`getProxyName(proxy)`、`convertProxy(proxy)`、`addProxyToConfig(proxy)`、`addAutoSelectGroup(list)`、`addNodeSelectGroup(list)`、`addOutboundGroups(outbounds, list)`、`addCustomRuleGroups(list)`、`addFallBackGroup(list)`、`addCountryGroups()`、`formatConfig()`。
 
+**自定义路由（仅 Sing-Box）**：`/singbox?rules=...` 每行 `域名 => 节点匹配`，`src/utils/routeRuleParser.js` 解析成 AST，`src/builders/helpers/nodeMatcher.js` 按 tag 匹配，`SingboxConfigBuilder.applyRouteRules()` 生成 `🎯` 组（selector/urltest）并把规则插在内置规则之前。骨架不可变约束的唯一例外即此：只允许追加 outbound 与前插 route.rules。
+
 **Config Override**：订阅含完整配置时，`applyConfigOverrides()` 合并非代理字段到 base config；blacklist（proxies、rules、rule-providers）永远不被覆盖；Clash `proxy-groups` 可被订阅覆盖以保留用户分组结构。
 
 国家分组逻辑在 `src/utils.js#groupProxiesByCountry`。

@@ -11,9 +11,10 @@ import { ClashConfigBuilder } from '../builders/ClashConfigBuilder.js';
 import { SurgeConfigBuilder } from '../builders/SurgeConfigBuilder.js';
 import { createTranslator, resolveLanguage } from '../i18n/index.js';
 import { encodeBase64, tryDecodeSubscriptionLines, V2RAYN_USER_AGENT } from '../utils.js';
+import { formatRouteRuleErrors, parseRouteRules } from '../utils/routeRuleParser.js';
 import { APP_NAME, APP_SUBTITLE } from '../constants.js';
 import { ShortLinkService } from '../services/shortLinkService.js';
-import { ServiceError, MissingDependencyError } from '../services/errors.js';
+import { ServiceError, MissingDependencyError, InvalidPayloadError } from '../services/errors.js';
 import { normalizeRuntime } from '../runtime/runtimeConfig.js';
 
 export function createApp(bindings = {}) {
@@ -71,8 +72,19 @@ export function createApp(bindings = {}) {
             }
 
             const lang = c.get('lang');
+            const t = c.get('t');
+            const rulesText = c.req.query('rules') || '';
 
-            const builder = new SingboxConfigBuilder(config, lang);
+            let routeRules = [];
+            if (rulesText.trim() !== '') {
+                const parsed = parseRouteRules(rulesText);
+                if (parsed.errors.length > 0) {
+                    throw new InvalidPayloadError(`${t('customRoutes')}: ${formatRouteRuleErrors(parsed.errors, t)}`);
+                }
+                routeRules = parsed.rules;
+            }
+
+            const builder = new SingboxConfigBuilder(config, lang, { routeRules });
             await builder.build();
             const userinfo = builder.getSubscriptionUserinfo();
             if (userinfo) {

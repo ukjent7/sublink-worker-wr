@@ -1,15 +1,38 @@
 import { SING_BOX_CONFIG } from '../config/index.js';
 import { deepCopy } from '../utils.js';
+import { parseIntervalSeconds } from '../utils/routeRuleParser.js';
 import { BaseConfigBuilder } from './BaseConfigBuilder.js';
+import { groupDisplayName, matchNodeTags, ruleDedupKey } from './helpers/nodeMatcher.js';
 
 const SINGLE_GROUP_TAG = '📌 单节点';
 const AGGREGATE_GROUP_TAG = '🌐 全局';
 
+// sing-box urltest defaults: interval 3m, idle_timeout 30m (constant/timeout.go).
+const DEFAULT_URLTEST_IDLE_SECONDS = 30 * 60;
+
+// sing-box refuses to start on a group without members (`missing tags`), so an
+// empty match must never create one.
+const GROUP_OUTBOUND_TYPES = new Set(['selector', 'urltest']);
+const BUILTIN_OUTBOUND_TYPES = new Set(['direct', 'block']);
+const CONDITION_FIELD = {
+    domain: 'domain',
+    domain_suffix: 'domain_suffix',
+    domain_regex: 'domain_regex',
+    ip_cidr: 'ip_cidr'
+};
+// Reserved matcher words that point at an existing outbound instead of nodes.
+const RESERVED_TARGETS = {
+    direct: 'direct',
+    block: 'block',
+    global: AGGREGATE_GROUP_TAG,
+    single: SINGLE_GROUP_TAG
+};
+
 const subscriptionGroupName = (index) => `✈️ 订阅${String(index + 1).padStart(2, '0')}`;
 
 export class SingboxConfigBuilder extends BaseConfigBuilder {
-    constructor(inputString, lang) {
-        super(inputString, lang);
+    constructor(inputString, lang, options = {}) {
+        super(inputString, lang, options);
         this.config = deepCopy(SING_BOX_CONFIG);
     }
 
@@ -211,7 +234,150 @@ export class SingboxConfigBuilder extends BaseConfigBuilder {
         this.config.outbounds = [...head, ...nodes, ...tail];
     }
 
+    // User route rules get the highest priority: prepend them right after the
+    // leading action-only rules, otherwise the built-in `geosite-cn -> direct`
+    // matches first and the custom target is never reached.
+    applyRouteRules() {
+        if (!this.routeRules.length) return;
+
+        const outbounds = this.config.outbounds || [];
+        const usedTags = new Set(outbounds.map(outbound => outbound?.tag).filter(Boolean));
+        const nodeTags = outbounds
+            .filter(outbound => outbound && !GROUP_OUTBOUND_TYPES.has(outbound.type) && !BUILTIN_OUTBOUND_TYPES.has(outbound.type))
+            .map(outbound => outbound.tag);
+
+        const reserveTag = (baseTag) => {
+            let tag = baseTag;
+            let suffix = 2;
+            while (usedTags.has(tag)) {
+                tag = `${baseTag}_${suffix}`;
+                suffix += 1;
+            }
+            usedTags.add(tag);
+            return tag;
+        };
+
+        const groupsByKey = new Map();
+        const conditionsByKey = new Map();
+
+        for (const rule of this.routeRules) {
+            const key = ruleDedupKey(rule);
+            let target = resolveReservedTarget(rule, nodeTags, usedTags);
+
+            if (!target) {
+                if (!groupsByKey.has(key)) {
+                    const matched = matchNodeTags(nodeTags, rule.clauses, { limit: rule.options.limit, sort: rule.options.sort });
+                    const group = buildRuleGroups(rule, matched, reserveTag);
+                    if (group) {
+                        outbounds.push(...group);
+                        // The outermost group is what the rule points at.
+                        groupsByKey.set(key, group[group.length - 1].tag);
+                    } else {
+                        groupsByKey.set(key, resolveFallbackTarget(rule.options.fallback));
+                    }
+                }
+                target = groupsByKey.get(key) || null;
+            }
+            if (!target) continue;
+
+            mergeRuleConditions(conditionsByKey, rule, target);
+        }
+
+        const rules = buildRouteRules(conditionsByKey);
+        if (rules.length === 0) return;
+
+        const route = this.config.route;
+        const existing = Array.isArray(route.rules) ? route.rules : [];
+        let insertAt = 0;
+        while (insertAt < existing.length && !isRoutingRule(existing[insertAt])) insertAt += 1;
+        route.rules = [...existing.slice(0, insertAt), ...rules, ...existing.slice(insertAt)];
+    }
+
     formatConfig() {
         return this.config;
     }
+}
+
+// A single positive keyword that names an existing outbound is used as-is:
+// `baidu.com => direct` and `openai.com => 日本-东京` must not build a group.
+function resolveReservedTarget(rule, nodeTags, knownTags) {
+    if (rule.clauses.length !== 1 || rule.clauses[0].length !== 1) return null;
+    const [term] = rule.clauses[0];
+    if (term.negate || term.kind !== 'keyword') return null;
+
+    const text = term.text;
+    const lowered = text.toLowerCase();
+    if (Object.hasOwn(RESERVED_TARGETS, lowered)) return RESERVED_TARGETS[lowered];
+    if (knownTags.has(text)) return text;
+    return nodeTags.find(tag => tag.toLowerCase() === lowered) || null;
+}
+
+// `fallback=none` drops the rule so the built-in routes keep their meaning.
+function resolveFallbackTarget(fallback) {
+    if (fallback === 'global') return AGGREGATE_GROUP_TAG;
+    if (fallback === 'direct') return 'direct';
+    return null;
+}
+
+function buildRuleGroups(rule, matched, reserveTag) {
+    if (matched.length === 0) return null;
+
+    const { mode, url, interval, tolerance } = rule.options;
+    const display = groupDisplayName(rule);
+
+    if (mode === 'urltest') {
+        return [{ type: 'urltest', tag: reserveTag(display), outbounds: [...matched], ...urlTestOptions({ url, interval, tolerance }) }];
+    }
+
+    const tag = reserveTag(display);
+    if (mode === 'both' && matched.length > 1) {
+        // sing-box urltest resolves nested groups, so the selector can offer
+        // "auto" plus every explicit node in one list.
+        const autoTag = reserveTag(`${tag} · 自动`);
+        return [
+            { type: 'urltest', tag: autoTag, outbounds: [...matched], ...urlTestOptions({ url, interval, tolerance }) },
+            { type: 'selector', tag, outbounds: [autoTag, ...matched], default: autoTag }
+        ];
+    }
+    return [{ type: 'selector', tag, outbounds: [...matched], default: matched[0] }];
+}
+
+// Only pass through what the user asked for: sing-box already defaults to
+// gstatic/generate_204, 3m interval and 50ms tolerance. A longer interval also
+// has to raise idle_timeout, or sing-box rejects the config at startup.
+function urlTestOptions({ url, interval, tolerance }) {
+    const seconds = interval ? parseIntervalSeconds(interval) : null;
+    return {
+        ...(url ? { url } : {}),
+        ...(interval ? { interval } : {}),
+        ...(seconds && seconds > DEFAULT_URLTEST_IDLE_SECONDS ? { idle_timeout: interval } : {}),
+        ...(tolerance ? { tolerance } : {})
+    };
+}
+
+// sing-box ANDs different rule fields within one rule, so each field type gets
+// its own rule; values inside a field are OR'ed by the engine.
+function mergeRuleConditions(store, rule, target) {
+    for (const condition of rule.conditions) {
+        const field = CONDITION_FIELD[condition.type];
+        const bucketKey = `${target}\u0000${field}`;
+        let entry = store.get(bucketKey);
+        if (!entry) {
+            entry = { field, values: new Set(), outbound: target };
+            store.set(bucketKey, entry);
+        }
+        entry.values.add(condition.value);
+    }
+}
+
+function buildRouteRules(store) {
+    return [...store.values()].map(entry => ({
+        [entry.field]: [...entry.values].sort(),
+        outbound: entry.outbound
+    }));
+}
+
+function isRoutingRule(rule) {
+    if (!rule) return false;
+    return typeof rule.outbound === 'string' || ['route', 'direct', 'bypass', 'reject'].includes(rule.action);
 }

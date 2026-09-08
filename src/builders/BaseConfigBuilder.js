@@ -1,19 +1,22 @@
 import { ProxyParser } from '../parsers/index.js';
 import { deepCopy, tryDecodeSubscriptionLines, decodeBase64, V2RAYN_USER_AGENT } from '../utils.js';
 
-// Skeleton configs are immutable except for filling outbound entries:
-// builders may only append node entries and member references, never
-// modify or delete existing fields.
+// Skeleton configs are immutable except for two append-only operations:
+// builders may add node/group outbounds and prepend user route rules.
+// Existing entries are never modified or removed.
 export class BaseConfigBuilder {
-    constructor(inputString, lang) {
+    constructor(inputString, lang, options = {}) {
         this.inputString = inputString;
         this.lang = lang;
+        this.routeRules = Array.isArray(options.routeRules) ? options.routeRules : [];
         this.subscriptionUserinfo = undefined;
     }
 
     async build() {
         const sources = await this.parseInputsBySource();
         this.fillSources(sources);
+        // Route rules run after fillSources so they match final, deduped tags.
+        this.applyRouteRules();
         return this.formatConfig();
     }
 
@@ -130,6 +133,10 @@ export class BaseConfigBuilder {
 
     fillSources(sources) {
         throw new Error('fillSources must be implemented in child class');
+    }
+
+    // Optional: map this.routeRules onto the filled config.
+    applyRouteRules() {
     }
 
     formatConfig() {

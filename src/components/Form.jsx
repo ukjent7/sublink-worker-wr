@@ -85,6 +85,50 @@ export const Form = (props) => {
         />
       </div>
 
+      {/* Custom Routing Section (sing-box only) */}
+      <details class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-md group">
+        <summary class="flex items-center justify-between gap-2 p-6 cursor-pointer list-none">
+          <span class="flex items-center gap-3 text-lg font-semibold text-gray-900 dark:text-white">
+            <span class="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center">
+              <i class="fas fa-route text-sm"></i>
+            </span>
+            {t('customRoutes')}
+          </span>
+          <span class="flex items-center gap-2 text-xs text-gray-400">
+            Sing-Box
+            <i class="fas fa-chevron-down transition-transform duration-200 group-open:rotate-180"></i>
+          </span>
+        </summary>
+        <div class="px-6 pb-6">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed break-words">
+            {t('customRoutesHelp')}
+          </p>
+          <TextareaWithActions
+            id="routeRules"
+            name="routeRules"
+            placeholder={t('customRoutesPlaceholder')}
+            model="routeRules"
+            rows={5}
+            variant="mono"
+            labelActionsWrapperClass="flex gap-2"
+            labelActions={[
+              {
+                key: 'clearRules',
+                icon: 'fas fa-times',
+                label: t('clear'),
+                hideLabelOnMobile: true,
+                className:
+                  'px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-1',
+                title: t('clear'),
+                attrs: {
+                  'x-on:click': "routeRules = ''"
+                }
+              }
+            ]}
+          />
+        </div>
+      </details>
+
   {/* Action Buttons */ }
   <div class="flex flex-col sm:flex-row gap-4">
           <button 

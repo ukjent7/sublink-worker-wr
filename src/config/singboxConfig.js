@@ -1,7 +1,8 @@
 /**
  * Sing-box Configuration
- * Fixed skeleton: only `outbounds` may be filled by builders.
- * Every other section is immutable and must not be modified by code.
+ * Fixed skeleton: builders may only append outbound entries and prepend user
+ * route rules (see SingboxConfigBuilder.applyRouteRules). Every existing entry
+ * and every other section is immutable and must not be modified by code.
  */
 
 export const SING_BOX_CONFIG = {

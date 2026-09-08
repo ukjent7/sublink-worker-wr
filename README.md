@@ -66,6 +66,36 @@ Sing-Box • Clash • Xray/V2Ray • Surge
 - Flexible API for script automation
 - Multi-language support (Chinese, English, Persian, Russian)
 - Web interface with predefined rule sets and customizable policy groups
+- Per-domain custom routing to node groups (Sing-Box)
+
+### Custom Routing (Sing-Box)
+
+Pass rules through the `rules` parameter of `/singbox` (the web form has a
+"Custom routing" box for it). One rule per line:
+
+```
+baidu.com, qq.com => us, 美国
+youtube.com => 美国+洛杉矶,-到期 mode=urltest limit=8
+openai.com => 日本-东京
+*.local.cn, 192.168.0.0/16 => direct
+```
+
+Each rule creates a `🎯` group holding every matching node and a route rule that
+points at it, inserted before the built-in rules so it always wins. Match terms
+are comma/space separated (OR), `+` combines them (AND), a leading `-` excludes,
+and `/regex/i` matches by regular expression.
+
+| Option | Meaning |
+| --- | --- |
+| `mode=selector` (default) / `urltest` / `both` | manual group, latency-tested group, or a selector wrapping the tested group |
+| `limit=N` / `sort=name` | cap and order the members |
+| `name=TAG` | explicit group tag instead of the generated `🎯 <matcher>` |
+| `fallback=none` (default) / `global` / `direct` | what the rule points at when nothing matches |
+| `url=` / `interval=` / `tolerance=` | `urltest` probe settings |
+
+Conditions accept `domain.com` (suffix, includes subdomains), `=domain.com`
+(exact), `~regex`, IPv4/IPv6 addresses and CIDRs. The target can also be an
+existing outbound: `direct`, `block`, `global` or a full node tag.
 
 ## 🤝 Contributing
 

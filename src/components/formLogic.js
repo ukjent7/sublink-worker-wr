@@ -2,6 +2,7 @@ export const formLogicFn = (t) => {
     window.formData = function () {
         return {
             input: '',
+            routeRules: '',
             loading: false,
             generatedLinks: null,
             shortenedLinks: null,
@@ -28,6 +29,7 @@ export const formLogicFn = (t) => {
 
                 // Load saved data
                 this.input = localStorage.getItem('inputTextarea') || '';
+                this.routeRules = localStorage.getItem('routeRulesTextarea') || '';
                 this.customShortCode = localStorage.getItem('customShortCode') || '';
 
                 // Watchers to save state
@@ -35,17 +37,20 @@ export const formLogicFn = (t) => {
                     localStorage.setItem('inputTextarea', val);
                     this.handleInputChange(val);
                 });
+                this.$watch('routeRules', val => localStorage.setItem('routeRulesTextarea', val));
                 this.$watch('customShortCode', val => localStorage.setItem('customShortCode', val));
             },
 
             clearAll() {
                 if (confirm(window.APP_TRANSLATIONS.confirmClearAll)) {
                     this.input = '';
+                    this.routeRules = '';
                     this.generatedLinks = null;
                     this.shortenedLinks = null;
                     this.customShortCode = '';
                     // Also clear from localStorage
                     localStorage.removeItem('customShortCode');
+                    localStorage.removeItem('routeRulesTextarea');
                 }
             },
 
@@ -57,6 +62,11 @@ export const formLogicFn = (t) => {
                     const origin = window.location.origin;
                     const params = new URLSearchParams();
                     params.append('config', this.input);
+                    // Sent on every link so Clash/Surge can adopt it later without
+                    // invalidating saved short links; only sing-box reads it today.
+                    if (this.routeRules.trim() !== '') {
+                        params.append('rules', this.routeRules);
+                    }
 
                     const queryString = params.toString();
 
@@ -254,6 +264,11 @@ export const formLogicFn = (t) => {
                 const config = params.get('config');
                 if (config) {
                     this.input = config;
+                }
+
+                const rules = params.get('rules');
+                if (rules !== null) {
+                    this.routeRules = rules;
                 }
             }
         }
