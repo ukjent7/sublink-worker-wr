@@ -25,7 +25,15 @@ export const Form = (props) => {
     customShortCode: t('customShortCode'),
     optional: t('optional'),
     customShortCodePlaceholder: t('customShortCodePlaceholder'),
-    showFullLinks: t('showFullLinks')
+    showFullLinks: t('showFullLinks'),
+    customRoutesStep1: t('customRoutesStep1'),
+    customRoutesStep1Hint: t('customRoutesStep1Hint'),
+    customRoutesStep2: t('customRoutesStep2'),
+    customRoutesNeedSites: t('customRoutesNeedSites'),
+    customRoutesNeedTarget: t('customRoutesNeedTarget'),
+    customRoutesBadSite: t('customRoutesBadSite'),
+    customRoutesOk: t('customRoutesOk'),
+    customRoutesEmpty: t('customRoutesEmpty')
   };
 
   const scriptContent = `
@@ -85,49 +93,85 @@ export const Form = (props) => {
         />
       </div>
 
-      {/* Custom Routing Section (sing-box only) */}
-      <details class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-md group">
-        <summary class="flex items-center justify-between gap-2 p-6 cursor-pointer list-none">
-          <span class="flex items-center gap-3 text-lg font-semibold text-gray-900 dark:text-white">
-            <span class="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center">
-              <i class="fas fa-route text-sm"></i>
-            </span>
-            {t('customRoutes')}
+      {/* Custom Routing Section: toddler-simple cards */}
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-md p-6 space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center">
+            <i class="fas fa-route text-sm"></i>
           </span>
-          <span class="flex items-center gap-2 text-xs text-gray-400">
-            Sing-Box
-            <i class="fas fa-chevron-down transition-transform duration-200 group-open:rotate-180"></i>
-          </span>
-        </summary>
-        <div class="px-6 pb-6">
-          <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed break-words">
-            {t('customRoutesHelp')}
-          </p>
-          <TextareaWithActions
-            id="routeRules"
-            name="routeRules"
-            placeholder={t('customRoutesPlaceholder')}
-            model="routeRules"
-            rows={5}
-            variant="mono"
-            labelActionsWrapperClass="flex gap-2"
-            labelActions={[
-              {
-                key: 'clearRules',
-                icon: 'fas fa-times',
-                label: t('clear'),
-                hideLabelOnMobile: true,
-                className:
-                  'px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-1',
-                title: t('clear'),
-                attrs: {
-                  'x-on:click': "routeRules = ''"
-                }
-              }
-            ]}
-          />
+          <div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">{t('customRoutes')}</div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{t('customRoutesHelp')}</p>
+          </div>
         </div>
-      </details>
+
+        <div class="flex flex-wrap gap-2">
+          <button type="button" x-on:click="useTemplateDmm()" class="px-3 py-1.5 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors">
+            {t('customRoutesTplDmm')}
+          </button>
+          <button type="button" x-on:click="useTemplateMedia()" class="px-3 py-1.5 text-xs font-medium rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors">
+            {t('customRoutesTplMedia')}
+          </button>
+        </div>
+
+        {/* Simple cards */}
+        <div x-show="!expertMode" class="space-y-3">
+          <template x-for="(card, idx) in routeCards" x-bind:key="card.id">
+            <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-200" x-text="'#' + (idx + 1)"></span>
+                <button type="button" x-on:click="removeRouteCard(idx)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">
+                  <i class="fas fa-trash-alt"></i> {t('customRoutesDelete')}
+                </button>
+              </div>
+              <div class="grid md:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('customRoutesStep1')}</label>
+                  <textarea rows="3" x-model="routeCards[idx].domains" x-on:input="onCardInput()" placeholder={t('customRoutesDomainsPlaceholder')} class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-mono text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y placeholder-gray-400"></textarea>
+                  <p class="text-[11px] text-gray-400 mt-1">{t('customRoutesStep1Hint')}</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('customRoutesStep2')}</label>
+                  <div class="flex flex-wrap gap-1.5">
+                    <button type="button" x-on:click="setCardPreset(idx, '日本')" x-bind:class="routeCards[idx].preset === '日本' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetJapan')}</button>
+                    <button type="button" x-on:click="setCardPreset(idx, '美国')" x-bind:class="routeCards[idx].preset === '美国' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetUsa')}</button>
+                    <button type="button" x-on:click="setCardPreset(idx, '香港')" x-bind:class="routeCards[idx].preset === '香港' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetHk')}</button>
+                    <button type="button" x-on:click="setCardPreset(idx, '新加坡')" x-bind:class="routeCards[idx].preset === '新加坡' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetSg')}</button>
+                    <button type="button" x-on:click="setCardPreset(idx, '__direct')" x-bind:class="routeCards[idx].preset === '__direct' ? 'bg-green-600 text-white border-green-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetDirect')}</button>
+                    <button type="button" x-on:click="setCardPreset(idx, '__block')" x-bind:class="routeCards[idx].preset === '__block' ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetBlock')}</button>
+                    <button type="button" x-on:click="setCardPreset(idx, '__custom')" x-bind:class="routeCards[idx].preset === '__custom' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'" class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors">{t('customRoutesPresetCustom')}</button>
+                  </div>
+                  <div x-show="routeCards[idx].preset === '__custom'" class="mt-2">
+                    <input type="text" x-model="routeCards[idx].customTarget" x-on:input="onCardInput()" placeholder={t('customRoutesTargetPlaceholder')} class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2 text-xs rounded-lg px-2.5 py-1.5" x-bind:class="cardStatus(routeCards[idx]).ok ? (cardStatus(routeCards[idx]).warn ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-300') : 'bg-gray-100 dark:bg-gray-800 text-gray-400'">
+                <span x-text="cardStatus(routeCards[idx]).text || '…'">…</span>
+                <code x-show="cardPreview(routeCards[idx])" x-text="cardPreview(routeCards[idx])" class="font-mono truncate max-w-[60%] opacity-70"></code>
+              </div>
+            </div>
+          </template>
+          <button type="button" x-on:click="addRouteCard()" class="w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 transition-colors">
+            {t('customRoutesAdd')}
+          </button>
+          <p class="text-[11px] text-gray-400 font-mono break-all">
+            <span>{t('customRoutesPreview')}</span><span x-text="routeRules || '（空）'"></span>
+          </p>
+        </div>
+
+        {/* Expert toggle */}
+        <div>
+          <button type="button" x-on:click="expertMode = !expertMode" class="text-xs text-gray-400 hover:text-primary-500 transition-colors">
+            <span x-show="!expertMode">{t('customRoutesExpert')}</span>
+            <span x-show="expertMode">{t('customRoutesBackToSimple')}</span>
+          </button>
+          <div x-show="expertMode" class="mt-2">
+            <p class="text-[11px] text-gray-400 mb-1">{t('customRoutesExpertHint')}</p>
+            <textarea rows="5" x-model="expertText" placeholder={t('customRoutesPlaceholder')} class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 font-mono text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y placeholder-gray-400"></textarea>
+          </div>
+        </div>
+      </div>
 
   {/* Action Buttons */ }
   <div class="flex flex-col sm:flex-row gap-4">

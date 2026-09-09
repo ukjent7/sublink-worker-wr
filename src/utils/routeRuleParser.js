@@ -44,8 +44,13 @@ export const DEFAULT_ROUTE_RULE_OPTIONS = {
 const MODES = new Set(['selector', 'urltest', 'both']);
 const SORTS = new Set(['input', 'name']);
 const FALLBACKS = new Set(['none', 'global', 'direct']);
-const SEPARATOR_RE = /=>|->/;
-const OPTION_PREFIX_RE = /^[a-z][a-z0-9_-]*=$/i;
+// `=>` / `->` 外加中文输入法常误触的全角形式（＝＞、→ 等），小白直接粘贴也不炸。
+const SEPARATOR_RE = /=>|->|＝＞|＝>|=＞|→|—＞|―＞/;
+const OPTION_PREFIX_RE = /^[a-z][a-z0-9_-]*[=＝]$/i;
+// 中文逗号、顿号、分号都当“或”：dmm.co.jp，dlsite.com 不再 400。
+const LIST_SEP_RE = /^[，、；;]$/;
+const isListSep = (char) => char === ',' || LIST_SEP_RE.test(char) || /\s/.test(char);
+const isPlusSep = (char) => char === '+' || char === '＋';
 const MAX_DURATION_SECONDS = 24 * 60 * 60;
 // Unicode hostnames are allowed: IDN domains show up in both sites and node tags.
 const HOSTNAME_RE = /^(?:[\p{L}\p{N}](?:[\p{L}\p{N}\-_]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}](?:[\p{L}\p{N}\-_]*[\p{L}\p{N}])?$/u;
@@ -90,7 +95,7 @@ function tokenize(text, line) {
 
     for (let index = 0; index < text.length;) {
         const char = text[index];
-        if (char === ',' || /\s/.test(char)) {
+        if (isListSep(char)) {
             closeToken();
             index += 1;
             continue;
@@ -132,7 +137,7 @@ function findRegexConditionEnd(text, start) {
     for (let index = start; index < text.length; index += 1) {
         const char = text[index];
         if (/\s/.test(char)) return index;
-        if (char === ',' && (index + 1 >= text.length || /\s/.test(text[index + 1]))) return index;
+        if ((char === ',' || LIST_SEP_RE.test(char)) && (index + 1 >= text.length || /\s/.test(text[index + 1]) || isListSep(text[index + 1]))) return index;
     }
     return text.length;
 }
@@ -187,6 +192,39 @@ function parseCIDR(value) {
     return { host: rawHost, prefix, isIPv6 };
 }
 
+function extractHostnameCandidate(raw) {
+    let s = String(raw || '').trim();
+    if (!s) return s;
+    // IP段原样保留：1.2.3.0/24、fd00::/8 不能当网址路径砍掉。
+    if (/^[0-9a-f:.]+\/\d{1,3}$/i.test(s)) return s;
+    // 小白经常直接粘贴链接：https://www.dlsite.com/home?a=1 => dlsite.com
+    // 这里只做无害提取，引号/正则原样保留给上层处理。
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
+        try {
+            const url = new URL(s);
+            // host 里的端口顺手去掉，路径不要
+            s = url.hostname || s;
+            return s.trim();
+        } catch { /* 掉下去走普通校验报错 */ }
+    }
+    // 无协议粘贴：www.dlsite.com/path?x=1#y => www.dlsite.com
+    // 但 IP段已提前返回，这里砍路径是安全的。
+    const slash = s.indexOf('/');
+    if (slash >= 0) s = s.slice(0, slash);
+    const q = s.indexOf('?');
+    if (q >= 0) s = s.slice(0, q);
+    const hash = s.indexOf('#');
+    if (hash >= 0) s = s.slice(0, hash);
+    // 顺手去掉首尾的全角标点和空白：，、；。
+    s = s.replace(/^[，、；;,。\.\s]+|[，、；;,。\.\s]+$/g, '');
+    // 纯主机名带端口：example.com:8080 => example.com（IPv6 不动）
+    if (!s.includes(':') || /^[^:]+:\d+$/.test(s)) {
+        const colon = s.lastIndexOf(':');
+        if (colon > 0 && /^\d+$/.test(s.slice(colon + 1))) s = s.slice(0, colon);
+    }
+    return s.trim();
+}
+
 function parseCondition(segments, line) {
     const regex = singleRegex(segments);
     if (regex) {
@@ -194,7 +232,8 @@ function parseCondition(segments, line) {
         return { type: 'domain_regex', value: regex.value };
     }
 
-    const raw = joinValue(segments);
+    let raw = joinValue(segments);
+    raw = extractHostnameCandidate(raw);
     if (raw.startsWith('=')) {
         const value = raw.slice(1).toLowerCase();
         if (!HOSTNAME_RE.test(value)) throw new ParseAbort(ERROR(line, 'routeRuleErrorInvalidCondition', raw));
@@ -220,7 +259,8 @@ function parseTerm(segments, line) {
     let parts = segments;
     let negate = false;
     const [first, ...rest] = parts;
-    if (first.kind === 'plain' && (first.value[0] === '-' || first.value[0] === '!')) {
+    const lead = first?.value?.[0];
+    if (first.kind === 'plain' && (lead === '-' || lead === '!' || lead === '－' || lead === '—')) {
         negate = true;
         const remainder = first.value.slice(1);
         parts = remainder === '' ? rest : [{ kind: 'plain', value: remainder }, ...rest];
@@ -236,7 +276,7 @@ function parseTerm(segments, line) {
     return { negate, kind: 'keyword', text };
 }
 
-// `+` only splits inside plain runs so quoted terms and regex bodies survive.
+// `+`（含全角 ＋） only splits inside plain runs so quoted terms and regex bodies survive.
 function splitAndTerms(segments) {
     const terms = [];
     let current = [];
@@ -245,14 +285,22 @@ function splitAndTerms(segments) {
             current.push(segment);
             continue;
         }
-        const chunks = segment.value.split('+');
-        chunks.forEach((chunk, index) => {
-            if (index > 0) {
+        // 手动按 + / ＋ 切分，避免 String.split 吞掉空项语义变化。
+        let chunk = '';
+        const pushChunk = () => {
+            if (chunk !== '') current.push({ kind: 'plain', value: chunk });
+            chunk = '';
+        };
+        for (const char of segment.value) {
+            if (isPlusSep(char)) {
+                pushChunk();
                 terms.push(current);
                 current = [];
+            } else {
+                chunk += char;
             }
-            if (chunk !== '') current.push({ kind: 'plain', value: chunk });
-        });
+        }
+        pushChunk();
     }
     terms.push(current);
     return terms.filter(term => term.length > 0);
@@ -276,7 +324,7 @@ function parseMatcherTokens(tokens, line) {
     return clauses;
 }
 
-const OPTION_LIKE_RE = /^[a-z][a-z0-9_-]*=/i;
+const OPTION_LIKE_RE = /^[a-z][a-z0-9_-]*[=＝]/i;
 
 // A plain `key=` token is always read as an option, known or not: unknown keys
 // must surface as typos rather than become node names matching nothing.
@@ -286,7 +334,9 @@ function looksLikeOption(token) {
 }
 
 function parseOption(token) {
-    const raw = joinValue(token);
+    let raw = joinValue(token);
+    // mode＝urltest 这种全角等号也认，避免小白卡死。
+    raw = raw.replace(/＝/g, '=');
     const eq = raw.indexOf('=');
     if (eq <= 0) return null;
     const key = raw.slice(0, eq);

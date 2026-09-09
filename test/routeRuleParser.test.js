@@ -48,6 +48,24 @@ describe('route rule parser: conditions', () => {
         expect(errorCodes('1.2.3.0/33 => us')).toEqual(['routeRuleErrorInvalidCondition']);
         expect(errorCodes('=> us')).toEqual(['routeRuleErrorInvalidCondition']);
     });
+
+    it('tolerates Chinese punctuation and pasted links (toddler-proof)', () => {
+        // 原 400 案例：中文逗号不再炸
+        expect(firstRule('dmm.co.jp，dlsite.com => 日本').conditions).toEqual([
+            { type: 'domain_suffix', value: 'dmm.co.jp' },
+            { type: 'domain_suffix', value: 'dlsite.com' }
+        ]);
+        expect(firstRule('dmm.co.jp、dlsite.com => 日本').conditions).toHaveLength(2);
+        expect(firstRule('dmm.co.jp；dlsite.com => 日本').conditions).toHaveLength(2);
+        // 直接粘贴链接自动取域名
+        expect(firstRule('https://www.dlsite.com/home?a=1 => 日本').conditions).toEqual([
+            { type: 'domain_suffix', value: 'www.dlsite.com' }
+        ]);
+        // 全角箭头 / 全角加号 / 全角等号
+        expect(firstRule('dmm.co.jp ＝＞ 日本').expression).toBe('日本');
+        expect(firstRule('a.cn => 日本＋东京').clauses[0].map((t) => t.text)).toEqual(['日本', '东京']);
+        expect(firstRule('a.cn => us mode＝urltest').options.mode).toBe('urltest');
+    });
 });
 
 describe('route rule parser: node matcher', () => {
